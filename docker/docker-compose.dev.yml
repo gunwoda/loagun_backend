@@ -1,0 +1,27 @@
+version: '3.9'
+
+# 로컬 개발용: MariaDB + Redis만 띄우기
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: loagun-mariadb-dev
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: loagun_dev
+      MARIADB_USER: loagun
+      MARIADB_PASSWORD: loagun1234
+    volumes:
+      - mariadb-dev-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: loagun-redis-dev
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  mariadb-dev-data:
