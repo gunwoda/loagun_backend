@@ -1,13 +1,14 @@
 package com.loagun.backend.character.service;
 
-import com.loagun.backend.character.dto.CharacterProfileResponse;
-import com.loagun.backend.character.dto.CharacterSiblingResponse;
+import com.loagun.backend.character.dto.*;
 import com.loagun.backend.global.client.LostarkApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -18,10 +19,24 @@ public class CharacterService {
 
     private final LostarkApiClient lostarkApiClient;
 
+    // 전체 armory 조회에 사용할 필터 (단일 API 호출로 모든 정보 수신)
+    private static final String ARMORY_FILTERS =
+            "profiles+equipment+avatars+combat-skills+engravings+cards+gems+collectibles+arkpassive";
+
     /**
-     * 캐릭터 프로필 조회
-     * - Redis 캐시 TTL: 5분 (RedisConfig 참고)
-     * - 동일 캐릭터 반복 조회 시 로스트아크 API rate limit 방어
+     * 캐릭터 전체 정보 통합 조회
+     * - 단일 API 호출로 프로필, 장비, 스킬, 각인, 카드, 보석, 수집형, 아크패시브 전부 수신
+     * - API Rate Limit 절약: 개별 엔드포인트 8번 → 1번으로 감소
+     */
+    @Cacheable(value = "character", key = "'armory:' + #characterName")
+    public CharacterArmoryResponse getArmory(String characterName) {
+        log.debug("캐릭터 전체 정보 조회 - API 호출: {}", characterName);
+        String path = "/armories/characters/" + encode(characterName) + "?filters=" + ARMORY_FILTERS;
+        return lostarkApiClient.get(path, CharacterArmoryResponse.class);
+    }
+
+    /**
+     * 캐릭터 프로필 조회 (경량)
      */
     @Cacheable(value = "character", key = "'profile:' + #characterName")
     public CharacterProfileResponse getProfile(String characterName) {
@@ -32,7 +47,6 @@ public class CharacterService {
 
     /**
      * 계정 내 보유 캐릭터 목록 조회 (원정대)
-     * - Redis 캐시 TTL: 5분
      */
     @Cacheable(value = "character", key = "'siblings:' + #characterName")
     public List<CharacterSiblingResponse> getSiblings(String characterName) {
@@ -43,6 +57,6 @@ public class CharacterService {
     }
 
     private String encode(String characterName) {
-        return java.net.URLEncoder.encode(characterName, java.nio.charset.StandardCharsets.UTF_8);
+        return URLEncoder.encode(characterName, StandardCharsets.UTF_8);
     }
 }

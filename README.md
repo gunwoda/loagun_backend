@@ -158,6 +158,7 @@ Push / PR
 |--------|------|
 | `DOCKER_USERNAME` | Docker Hub 계정명 |
 | `DOCKER_TOKEN` | Docker Hub Access Token |
+| `LOSTARK_API_KEY` | 로스트아크 Open API 키 |
 
 ---
 
@@ -167,8 +168,24 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ### 캐릭터 조회
 
-#### GET `/api/v1/characters/{characterName}/profile`
-캐릭터 프로필 정보 조회 (전투레벨, 아이템레벨, 클래스, 원정대레벨 등)
+#### GET `/api/v1/characters/{characterName}/armory` ★ 통합 조회
+캐릭터의 모든 정보를 **단일 API 호출**로 조회합니다.
+
+**왜 통합 엔드포인트인가?**
+로스트아크 API는 분당 100회 Rate Limit이 있습니다. 장비·스킬·각인·카드·보석 등을 개별 호출하면 한 캐릭터 조회에 8번의 API 호출이 필요합니다. 공식 API의 `filters` 파라미터를 활용해 1번 호출로 모든 데이터를 수신하여 Rate Limit 소모를 87.5% 절감합니다.
+
+**포함 데이터**
+| 섹션 | 설명 |
+|------|------|
+| `profile` | 기본 프로필, 스탯, 원정대레벨 |
+| `equipment` | 장비 6슬롯 + 장신구 (품질, 강화 수치는 Tooltip에 포함) |
+| `avatars` | 착용 아바타 목록 |
+| `skills` | 전투 스킬 (레벨, 트라이포드, 룬) |
+| `engravings` | 각인 슬롯 + 활성 각인 효과 + 아크패시브 각인 |
+| `cards` | 카드 슬롯 + 세트 효과 |
+| `gems` | 보석 슬롯 + 스킬별 보석 효과 |
+| `collectibles` | 수집형 포인트 (섬의 마음, 모코코 씨앗 등) |
+| `arkPassive` | 아크패시브 포인트 및 활성 효과 |
 
 **Response**
 ```json
@@ -176,40 +193,23 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
   "success": true,
   "message": "OK",
   "data": {
-    "characterName": "아르떼미스",
-    "serverName": "아브렐슈드",
-    "characterClassName": "기상술사",
-    "characterLevel": 60,
-    "itemAvgLevel": "1,620.00",
-    "itemMaxLevel": "1,625.00",
-    "expeditionLevel": 70,
-    "guildName": "길드명",
-    "title": "칭호",
-    "characterImage": "https://..."
+    "profile": { "characterName": "깜지직", "itemAvgLevel": "1,680.00", ... },
+    "equipment": [{ "type": "무기", "name": "...", "grade": "에스더", "tooltip": "..." }],
+    "skills": [{ "name": "스킬명", "level": 10, "tripods": [...], "rune": {...} }],
+    "engravings": { "engravings": [...], "effects": [...] },
+    "cards": { "cards": [...], "effects": [...] },
+    "gems": { "gems": [...], "effects": {...} },
+    "collectibles": [{ "type": "섬의 마음", "point": 95, "maxPoint": 95 }],
+    "arkPassive": { "isArkPassive": true, "points": [...], "effects": [...] }
   }
 }
 ```
 
+#### GET `/api/v1/characters/{characterName}/profile`
+기본 프로필만 필요할 때 사용하는 경량 엔드포인트
+
 #### GET `/api/v1/characters/{characterName}/siblings`
 계정 내 원정대 캐릭터 전체 목록 조회
-
-**Response**
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": [
-    {
-      "serverName": "아브렐슈드",
-      "characterName": "아르떼미스",
-      "characterLevel": 60,
-      "characterClassName": "기상술사",
-      "itemAvgLevel": "1,620.00",
-      "itemMaxLevel": "1,625.00"
-    }
-  ]
-}
-```
 
 ---
 
