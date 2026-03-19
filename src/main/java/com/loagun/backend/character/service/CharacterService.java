@@ -4,6 +4,7 @@ import com.loagun.backend.character.dto.*;
 import com.loagun.backend.global.client.LostarkApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -50,5 +51,24 @@ public class CharacterService {
                 Map.of("name", characterName)
         );
         return response != null ? Arrays.asList(response) : List.of();
+    }
+
+    /**
+     * 특정 캐릭터의 캐시 전체 삭제
+     * 캐릭터 정보가 갱신되었을 때 클라이언트가 명시적으로 호출
+     */
+    @CacheEvict(value = "character", allEntries = false, key = "'armory:' + #characterName")
+    public void evictArmoryCache(String characterName) {
+        log.info("캐릭터 armory 캐시 삭제: {}", characterName);
+    }
+
+    @CacheEvict(value = "character", allEntries = false, key = "'profile:' + #characterName")
+    public void evictProfileCache(String characterName) {
+        log.info("캐릭터 profile 캐시 삭제: {}", characterName);
+    }
+
+    @CacheEvict(value = "character", allEntries = false, key = "'siblings:' + #characterName")
+    public void evictSiblingsCache(String characterName) {
+        log.info("캐릭터 siblings 캐시 삭제: {}", characterName);
     }
 }

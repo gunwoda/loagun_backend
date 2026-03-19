@@ -7,10 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -66,5 +63,23 @@ public class CharacterController {
             @Parameter(description = "캐릭터명 (계정 내 아무 캐릭터명)", example = "깜지직") @PathVariable String characterName
     ) {
         return ApiResponse.ok(characterService.getSiblings(characterName));
+    }
+
+    @Operation(
+            summary = "캐릭터 캐시 갱신",
+            description = """
+                    캐릭터 정보 캐시를 삭제하여 다음 조회 시 최신 데이터를 가져오도록 합니다.
+                    로스트아크 API Rate Limit 보호를 위해 캐시 TTL은 5분이며,
+                    장비 강화 등 즉시 반영이 필요할 때 사용합니다.
+                    """
+    )
+    @DeleteMapping("/{characterName}/cache")
+    public ApiResponse<Void> evictCache(
+            @Parameter(description = "캐릭터명", example = "깜지직") @PathVariable String characterName
+    ) {
+        characterService.evictArmoryCache(characterName);
+        characterService.evictProfileCache(characterName);
+        characterService.evictSiblingsCache(characterName);
+        return ApiResponse.ok("캐시가 삭제되었습니다.", null);
     }
 }

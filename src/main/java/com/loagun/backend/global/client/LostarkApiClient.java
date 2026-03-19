@@ -4,6 +4,7 @@ import com.loagun.backend.global.common.exception.CustomException;
 import com.loagun.backend.global.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -29,21 +30,17 @@ public class LostarkApiClient {
                 .build();
     }
 
-    /**
-     * GET 요청 - URI 템플릿 + 변수 방식으로 WebClient가 인코딩을 담당
-     * pathTemplate 예: "/armories/characters/{characterName}/profiles"
-     * uriVars 예: Map.of("characterName", "깜지직")
-     */
     public <T> T get(String pathTemplate, Class<T> responseType, Map<String, Object> uriVars) {
         return webClient.get()
                 .uri(pathTemplate, uriVars)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response -> {
-                    log.warn("Lostark API 4xx error: {} {}", response.statusCode(), pathTemplate);
-                    return Mono.error(new CustomException(ErrorCode.CHARACTER_NOT_FOUND));
+                    HttpStatus status = HttpStatus.resolve(response.statusCode().value());
+                    log.warn("Lostark API 4xx: {} {}", status, pathTemplate);
+                    return Mono.error(resolveClientError(status));
                 })
                 .onStatus(HttpStatusCode::is5xxServerError, response -> {
-                    log.error("Lostark API 5xx error: {} {}", response.statusCode(), pathTemplate);
+                    log.error("Lostark API 5xx: {} {}", response.statusCode(), pathTemplate);
                     return Mono.error(new CustomException(ErrorCode.EXTERNAL_API_ERROR));
                 })
                 .bodyToMono(responseType)
@@ -56,14 +53,24 @@ public class LostarkApiClient {
                 .bodyValue(body)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response -> {
-                    log.warn("Lostark API 4xx error: {} {}", response.statusCode(), pathTemplate);
-                    return Mono.error(new CustomException(ErrorCode.EXTERNAL_API_ERROR));
+                    HttpStatus status = HttpStatus.resolve(response.statusCode().value());
+                    log.warn("Lostark API 4xx: {} {}", status, pathTemplate);
+                    return Mono.error(resolveClientError(status));
                 })
                 .onStatus(HttpStatusCode::is5xxServerError, response -> {
-                    log.error("Lostark API 5xx error: {} {}", response.statusCode(), pathTemplate);
+                    log.error("Lostark API 5xx: {} {}", response.statusCode(), pathTemplate);
                     return Mono.error(new CustomException(ErrorCode.EXTERNAL_API_ERROR));
                 })
                 .bodyToMono(responseType)
                 .block();
+    }
+
+    private CustomException resolveClientError(HttpStatus status) {
+        if (status == null) return new CustomException(ErrorCode.EXTERNAL_API_ERROR);
+        return switch (status) {
+            case NOT_FOUND -> new CustomException(ErrorCode.CHARACTER_NOT_FOUND);
+            case TOO_MANY_REQUESTS -> new CustomException(ErrorCode.RATE_LIMIT_EXCEEDED);
+            default -> new CustomException(ErrorCode.EXTERNAL_API_ERROR);
+        };
     }
 }
