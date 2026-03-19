@@ -26,7 +26,6 @@ spring:
 lostark:
   api:
     base-url: https://developer-lostark.game.onstove.com
-    key: ${LOSTARK_API_KEY:your-dev-api-key}
 
 logging:
   level:
